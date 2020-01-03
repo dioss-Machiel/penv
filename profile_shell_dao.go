@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
 var (
-	linuxProfileShell = &shell{
+	//ProfileDAOInstance DAO for the .profile file
+	ProfileDAOInstance = &shell{
 		configFileName: filepath.Join(os.Getenv("HOME"), ".profile"),
 		commentSigil:   " #",
 		quote: func(value string) string {
@@ -41,12 +41,3 @@ var (
 		},
 	}
 )
-
-// LinuxDAO is the data access object for Linux
-type LinuxDAO struct{}
-
-func init() {
-	RegisterDAO(1000, func() bool {
-		return runtime.GOOS == "linux"
-	}, linuxProfileShell)
-}

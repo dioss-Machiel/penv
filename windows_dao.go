@@ -14,13 +14,27 @@ import (
 )
 
 const (
-	SMTO_ABORTIFHUNG uint32 = 0x0002
+	constSMTOABORTIFHUNG uint32 = 0x0002
 )
 
 var (
 	libuser32              *syscall.DLL
 	sendMessageTimeoutAddr *syscall.Proc
 )
+
+func uniquei(arr []string) []string {
+	u := make([]string, 0, len(arr))
+	h := map[string]struct{}{}
+	for _, str := range arr {
+		stri := strings.ToLower(str)
+		if _, ok := h[stri]; ok {
+			continue
+		}
+		h[stri] = struct{}{}
+		u = append(u, str)
+	}
+	return u
+}
 
 func init() {
 	libuser32 = syscall.MustLoadDLL("user32.dll")
@@ -40,18 +54,12 @@ func sendMessageTimeout(hWnd win.HWND, msg uint32, wParam, lParam uintptr, fuFla
 	return r1
 }
 
-// WindowsDAO is the data access object for windows
-type WindowsDAO struct {
-}
-
-func init() {
-	RegisterDAO(1000, func() bool {
-		return runtime.GOOS == "windows"
-	}, &WindowsDAO{})
+// WindowsRegistryDAO is the data access object for windows
+type WindowsRegistryDAO struct {
 }
 
 // Load loads the environment
-func (dao *WindowsDAO) Load() (*Environment, error) {
+func (dao *WindowsRegistryDAO) Load() (*Environment, error) {
 	key, err := registry.OpenKey(registry.CURRENT_USER, "Environment", registry.QUERY_VALUE)
 	if err != nil {
 		return nil, err
@@ -86,7 +94,7 @@ func (dao *WindowsDAO) Load() (*Environment, error) {
 }
 
 // Save saves the environment
-func (dao *WindowsDAO) Save(env *Environment) error {
+func (dao *WindowsRegistryDAO) Save(env *Environment) error {
 	key, err := registry.OpenKey(registry.CURRENT_USER, "Environment", registry.ALL_ACCESS)
 	if err != nil {
 		return err
@@ -169,7 +177,18 @@ append_loop:
 
 	str := "Environment"
 	pstr, _ := syscall.UTF16PtrFromString(str)
-	sendMessageTimeout(win.HWND_BROADCAST, win.WM_SETTINGCHANGE, 0, uintptr(unsafe.Pointer(pstr)), SMTO_ABORTIFHUNG, 100, 0)
+	sendMessageTimeout(win.HWND_BROADCAST, win.WM_SETTINGCHANGE, 0, uintptr(unsafe.Pointer(pstr)), constSMTOABORTIFHUNG, 100, 0)
 
 	return nil
+}
+
+var (
+	// WindowsRegistryDAOInstance use this for windows registry
+	WindowsRegistryDAOInstance = &WindowsRegistryDAO{}
+)
+
+func init() {
+	if runtime.GOOS == "windows" {
+		RegisterDAO(WindowsRegistryDAOInstance)
+	}
 }

@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"runtime"
 )
 
 var (
@@ -62,29 +62,29 @@ var (
 	}
 )
 
-// DarwinDAO is the data access object for OSX
-type DarwinDAO struct {
-}
-
-func init() {
-	RegisterDAO(500, func() bool {
-		return runtime.GOOS == "darwin"
-	}, &DarwinDAO{})
-}
+// DarwinPlistDAO is the data access object for OSX
+type DarwinPlistDAO struct{}
 
 // Load loads the environment
-func (dao *DarwinDAO) Load() (*Environment, error) {
+func (dao *DarwinPlistDAO) Load() (*Environment, error) {
 	return darwinShell.Load()
 }
 
 // Save saves the environment
-func (dao *DarwinDAO) Save(env *Environment) error {
+func (dao *DarwinPlistDAO) Save(env *Environment) error {
 	err := darwinShell.Save(env)
 	if err != nil {
 		return err
 	}
 
-	plistName := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "penv.plist")
+	plistDir := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents")
+
+	err = os.MkdirAll(plistDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	plistName := filepath.Join(plistDir, "penv.plist")
 
 	err = ioutil.WriteFile(plistName, []byte(darwinPlist), 0777)
 	if err != nil {
@@ -98,4 +98,16 @@ func (dao *DarwinDAO) Save(env *Environment) error {
 	}
 
 	return nil
+}
+
+var (
+	// DarwinPlistDAOInstance env with plist
+	DarwinPlistDAOInstance = &DarwinPlistDAO{}
+)
+
+func init() {
+	if runtime.GOOS == "darwin" {
+		RegisterDAO(ProfileDAOInstance)
+		RegisterDAO(DarwinPlistDAOInstance)
+	}
 }
